@@ -165,16 +165,16 @@ VALUES
 /*==============================================================*/
 /* Table: MEMBER_ROLES                                          */
 /*==============================================================*/
-insert into member_roles
+insert into member_roles (cip, role_id, assignment_timestamp)
 VALUES
-    ('garp2405', (select role_id from role where role_name = 'student')),
-    ('fonj1903', (select role_id from role where role_name = 'student')),
-    ('bosa2002', (select role_id from role where role_name = 'student')),
-    ('beae2211', (select role_id from role where role_name = 'student')),
-    ('asdf1111', (select role_id from role where role_name = 'management')),
-    ('asdf2222', (select role_id from role where role_name = 'teacher')),
-    ('asdf3333', (select role_id from role where role_name = 'teacher')),
-    ('asdf4444', (select role_id from role where role_name = 'tech support'));
+    ('garp2405', (select role_id from role where role_name = 'student'), now()),
+    ('fonj1903', (select role_id from role where role_name = 'student'), now()),
+    ('bosa2002', (select role_id from role where role_name = 'student'), now()),
+    ('beae2211', (select role_id from role where role_name = 'student'), now()),
+    ('asdf1111', (select role_id from role where role_name = 'management'), now()),
+    ('asdf2222', (select role_id from role where role_name = 'teacher'), now()),
+    ('asdf3333', (select role_id from role where role_name = 'teacher'), now()),
+    ('asdf4444', (select role_id from role where role_name = 'tech support'), now());
 
 /*==============================================================*/
 /* Table: PERMISSION                                            */

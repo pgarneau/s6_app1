@@ -1,6 +1,6 @@
 /*==============================================================*/
 /* DBMS name:      PostgreSQL 9.x                               */
-/* Created on:     9/10/2018 4:19:19 PM                         */
+/* Created on:     9/11/2018 3:36:39 PM                         */
 /*==============================================================*/
 
 
@@ -86,9 +86,11 @@ create table MEMBER (
 /* Table: MEMBER_ROLES                                          */
 /*==============================================================*/
 create table MEMBER_ROLES (
-   CIP                  CHAR(8)              not null,
    ROLE_ID              INT4                 not null,
-   constraint PK_MEMBER_ROLES primary key (CIP, ROLE_ID)
+   CIP                  CHAR(8)              not null,
+   ASSIGNMENT_TIMESTAMP TIMESTAMP            not null,
+   REMOVAL_TIMESTAMP    TIMESTAMP            null,
+   constraint PK_MEMBER_ROLES primary key (ROLE_ID, CIP)
 );
 
 /*==============================================================*/
@@ -216,13 +218,13 @@ alter table LOG
       on delete restrict on update restrict;
 
 alter table MEMBER_ROLES
-   add constraint FK_MEMBER_R_MEMBER_RO_MEMBER foreign key (CIP)
-      references MEMBER (CIP)
+   add constraint FK_MEMBER_R_MEMBER_RO_ROLE foreign key (ROLE_ID)
+      references ROLE (ROLE_ID)
       on delete restrict on update restrict;
 
 alter table MEMBER_ROLES
-   add constraint FK_MEMBER_R_MEMBER_RO_ROLE foreign key (ROLE_ID)
-      references ROLE (ROLE_ID)
+   add constraint FK_MEMBER_R_MEMBER_RO_MEMBER foreign key (CIP)
+      references MEMBER (CIP)
       on delete restrict on update restrict;
 
 alter table PRIVILEGES
