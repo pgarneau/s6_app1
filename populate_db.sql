@@ -1,65 +1,65 @@
 /*==============================================================*/
 /* Trigger : log_insert                                         */
 /*==============================================================*/
-create or replace function log_insert()
+create or replace function log_activity ()
 returns trigger as
 $BODY$
+DECLARE
+   
+delete_message varchar := ''; --CONCAT('delete of reservation from ', old.start_timestamp, ' to ', old.end_timestamp);
+update_message varchar := ''; --CONCAT('change of reservation from ', old.start_timestamp, ' to ', old.end_timestamp, ' is now ',new.start_timestamp, ' to ', new.end_timestamp);
+insert_message varchar := ''; --CONCAT('insert of reservation from ', new.start_timestamp, ' to ', new.end_timestamp);
+
 begin
-insert into log (log_id, cip, log_timestamp, log_data) values (DEFAULT, new.cip, now(), concat('insert of reservation from ', new.start_timestamp, ' to ', new.start_timestamp));
-return new;
-end;
+    IF (TG_OP = 'DELETE') THEN
+		delete_message := CONCAT('delete of reservation from ', old.start_timestamp, ' to ', old.end_timestamp);
+        insert into log (log_id, cip , log_timestamp , log_data) values (DEFAULT,old.cip,now(),delete_message);
+       return old;
+    ELSIF (TG_OP = 'UPDATE') THEN
+	 	update_message := CONCAT('change of reservation : ', old.start_timestamp, ' to ', old.end_timestamp, ' was updated to ',new.start_timestamp, ' to ', new.end_timestamp);
+        insert into log (log_id, cip , log_timestamp , log_data) values (DEFAULT,new.cip,now(),update_message);
+       return new;
+    ELSIF (TG_OP = 'INSERT') THEN
+	insert_message := CONCAT('insert of reservation from ', new.start_timestamp, ' to ', new.end_timestamp);
+        insert into log (log_id, cip , log_timestamp , log_data) values (DEFAULT,new.cip,now(),insert_message);
+       return new;
+        
+    END IF; 
+	
+end
 $BODY$
 language plpgsql;
 
-create trigger new_entry
-after insert
+
+CREATE TRIGGER new_activity
+AFTER INSERT OR UPDATE OR DELETE 
 on reservation
 for each row
-execute procedure log_insert();
-
-/*==============================================================*/
-/* Trigger : log_delete                                   */
-/*==============================================================*/
-create or replace function log_delete()
-returns trigger as
-$BODY$
-begin
-insert into log (log_id, cip , log_timestamp , log_data) values (DEFAULT, new.cip, now(), concat('deletion of reservation from ', new.start_timestamp, ' to ', new.start_timestamp));
-return new;
-end;
-$BODY$
-language plpgsql;
-
-create trigger new_delete
-after delete
-on reservation
-for each row
-execute procedure log_delete();
+execute procedure log_activity();
 
 /*==============================================================*/
 /* Trigger : overlap_timestamp                                 */
 /*==============================================================*/
-
 CREATE OR REPLACE FUNCTION overlap_timestamp() RETURNS TRIGGER AS
-$check_reservation$
-	DECLARE i reservation%rowtype;
+$BODY$
+	DECLARE j reservation%rowtype;
 	BEGIN
-		FOR i IN 
+		FOR j IN 
 			SELECT * FROM reservation LEFT JOIN room 
-				ON (room.room_id = reservation.room_id or  reservation.room_id = room.parent_room_id)
-				WHERE (new.room_id = reservation.room_id or new.room_id = room.room_id or new.room_id = room.parent_room_id)
+				ON ( reservation.room_id = room.parent_room_id or room.room_id = reservation.room_id   )
+				WHERE ( new.room_id = room.room_id  or new.room_id = reservation.room_id or new.room_id = room.parent_room_id)
 		LOOP
-			IF (new.start_timestamp, new.end_timestamp) OVERLAPS (i.start_timestamp, i.end_timestamp) THEN
-				RAISE EXCEPTION 'La plage horraire nest pas disponible';
+			IF  (j.start_timestamp, j.end_timestamp) OVERLAPS (new.start_timestamp, new.end_timestamp)  THEN
+				RAISE EXCEPTION 'overlap detecter dans la reservation';
 			END IF;
 		END LOOP;
 		RETURN NEW;
 	END;
-$check_reservation$ 
+$BODY$ 
 LANGUAGE plpgsql;
 
-create trigger verify_overlap
-before insert
+CREATE TRIGGER new_entry
+BEFORE INSERT
 on reservation
 for each row
 execute procedure overlap_timestamp();
@@ -249,23 +249,15 @@ VALUES
     ('5029', (select characteristic_id from characteristic where characteristic_name = 'capacity'), 12, (select campus_id from campus where campus_name = 'Campus Principal'), 'C1');
 
 /*==============================================================*/
-/* Table: ROOM_UNAVAILABILITIES                                 */
-/*==============================================================*/
-
-create table ROOM_UNAVAILABILITIES (
-   CAMPUS_ID            INT4                 not null,
-   BUILDING_ID          CHAR(8)              not null,
-   ROOM_ID              CHAR(8)              not null,
-   UNAVAILABILITY_ID    INT4                 not null,
-   constraint PK_ROOM_UNAVAILABILITIES primary key (CAMPUS_ID, BUILDING_ID, ROOM_ID, UNAVAILABILITY_ID)
-);
-
-/*==============================================================*/
 /* Table: UNAVAILABILITY                                        */
 /*==============================================================*/
-create table UNAVAILABILITY (
-   UNAVAILABILITY_ID    SERIAL               not null,
-   UNAVAILABILITY_START_TIMESTAMP TIMESTAMP            not null,
-   UNAVAILABILITY_END_TIMESTAMP TIMESTAMP            not null,
-   constraint PK_UNAVAILABILITY primary key (UNAVAILABILITY_ID)
-);
+insert into unavailability
+VALUES
+    (DEFAULT, '2018-09-30 09:00:00', '2018-09-30 10:00:00');
+
+/*==============================================================*/
+/* Table: ROOM_UNAVAILABILITIES                                 */
+/*==============================================================*/
+insert into room_unavailabilities
+VALUES
+    ((select campus_id from campus where campus_name = 'Campus Principal'), 'C1', '3125', (select unavailability_id from unavailability where unavailability_start_timestamp = '2018-09-30 09:00:00'));
